@@ -68,7 +68,7 @@ GitHub (Actions tab -> *build-app* -> *Run workflow*). Locally:
 pip install pyinstaller
 pyinstaller --noconfirm --windowed --name SpikeFinder --collect-data spikefinder packaging/launch_gui.py
 ```
-The standalone builds have **not** been tested on all three systems yet; check them before handing them out. macOS may
+The workflow builds on Linux, macOS and Windows in CI, but nobody has launched the macOS/Linux apps yet; test them before handing them out. macOS may
 require right-click -> Open the first time (unsigned app).
 
 ## Quick start
@@ -199,9 +199,9 @@ Please read these before relying on the output.
 8. **File compatibility.** Tested on EyeSuite `.esx` exports from 2016-2025 (A-scans of 59,375 samples, one instrument). Other firmware, other scan lengths or other instruments may fail to parse or fall outside the search windows
    (then you get `ANCHOR_FAIL`/`OUT_OF_RANGE_FOR_CHICK`). Truncated files are read as far as they are complete.
 9. **Averaging only.** Only A-scans flagged *used* are averaged (as the original did); no outlier rejection or re-alignment.
-10. **Platform testing.** Developed and exercised on Windows only. A GitHub Actions workflow is provided to run the tests on
-    Linux/macOS/Windows (`.github/workflows/tests.yml`) but it has not been run yet, and the window has not been hand-tested
-    on macOS or Linux. Python 3.9 compatibility is intended but untested (developed on 3.12). Tk looks different on each system.
+10. **Platform testing.** The automated tests pass in CI on Linux, macOS and Windows with Python 3.9 and 3.12
+    (`.github/workflows/tests.yml`). The review window itself has only been hand-tested on Windows; on macOS and Linux it is
+    untested by a human, and Tk looks different on each system.
 11. **Speed/memory.** Files up to ~300 MB parse in seconds to a minute with a few hundred MB of RAM; there is no GPU or
     multiprocessing.
 12. **No ground truth is bundled.** The `.esx` data and hand-marked tables are not part of this repository.
