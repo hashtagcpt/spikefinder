@@ -1,0 +1,97 @@
+{
+ "name": "chick_2015_2016",
+ "description": "Chick eyes (Lenstar LS900), hand-marked data from 2015-2016; Retina and lens-front marking conventions differ from later years",
+ "fractions": {
+  "3": 0.0462,
+  "4": 0.1105,
+  "7": 0.8589,
+  "8": 0.9295
+ },
+ "bias": {
+  "0": 0.0,
+  "1": -26.0,
+  "2": -1.0,
+  "3": -11.1,
+  "4": -42.6,
+  "5": 0.0,
+  "6": 0.0,
+  "7": -5.7,
+  "8": -0.3,
+  "9": 0.0,
+  "10": 52.5,
+  "11": 554.5,
+  "12": 0.0
+ },
+ "reliability": {
+  "0": 0.994,
+  "1": 0.712,
+  "2": 0.66,
+  "3": 0.231,
+  "4": 0.179,
+  "5": 0.891,
+  "6": 0.872,
+  "7": 0.173,
+  "8": 0.16,
+  "9": 0.987,
+  "10": 0.513,
+  "11": 0.077,
+  "12": 0.987
+ },
+ "ranges": {
+  "cornea_pos": [
+   1186.16625,
+   1387.95875
+  ],
+  "cornea_to_lens_front": [
+   1594.9050000000002,
+   2668.4449999999997
+  ],
+  "lens_thickness": [
+   3043.1725,
+   4177.8775
+  ],
+  "lens_back_to_rpe": [
+   8320.472500000002,
+   10358.027499999998
+  ]
+ },
+ "meta": {
+  "n_eye_exams": 156,
+  "n_animals": 41,
+  "years": [
+   "2015",
+   "2016"
+  ],
+  "fitted": "2026-11-10",
+  "loao_within5": {
+   "Cornea/Aqueous": 0.994,
+   "Aqueous/Lens Baseline": 0.244,
+   "Aqueous/Capsule": 0.654,
+   "Capsule/Cortex": 0.045,
+   "Cortex/Nucleus": 0.058,
+   "Choroid": 0.821,
+   "Sclera": 0.84,
+   "Nucleus/Cortex": 0.051,
+   "Cortex/Capsule": 0.026,
+   "Capsule/Vitreous": 0.981,
+   "Lens/Vitreous Baseline": 0.122,
+   "Retina": 0.019,
+   "RPE": 0.981
+  },
+  "loao_median_abs_err_samples": {
+   "Cornea/Aqueous": 0.0,
+   "Aqueous/Lens Baseline": 13.0,
+   "Aqueous/Capsule": 2.0,
+   "Capsule/Cortex": 69.0,
+   "Cortex/Nucleus": 84.5,
+   "Choroid": 2.0,
+   "Sclera": 2.0,
+   "Nucleus/Cortex": 114.5,
+   "Cortex/Capsule": 70.0,
+   "Capsule/Vitreous": 1.0,
+   "Lens/Vitreous Baseline": 24.5,
+   "Retina": 178.0,
+   "RPE": 1.0
+  }
+ }
+}
