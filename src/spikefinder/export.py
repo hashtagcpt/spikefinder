@@ -3,12 +3,61 @@ from __future__ import annotations
 
 import csv
 import re
+from collections import Counter
 
 import numpy as np
 
 from ._exe_header import EXE_COLUMNS
 from .detect import MARKER_NAMES
 from .session import EyeRecord
+from .biometry import measurements, SAMPLES_PER_OPL_MM, REFERENCE_SAMPLE, INDICES
+
+
+def write_biometry_csv(records, path):
+    """Analysis table with protocol estimates, explicit units and review state."""
+    rows = []
+    counts = Counter(r.key for r in records)
+    for r in records:
+        values = measurements(r.x)
+        row = dict(subject=r.subject_key, eye=r.eye, exam_timestamp=r.exam_ts,
+                   subject_hint=r.hint, n_scans=r.n_scans, reviewer=r.reviewer,
+                   reviewed_at=r.reviewed_at, notes=r.notes,
+                   source_file=r.source.replace(chr(92), "/").split("/")[-1], record_key=r.key,
+                   profile=r.detection.profile, status=r.status, requires_review=int(r.status != "confirmed"),
+                   flags=";".join(r.flags), measurement_method="historical_lab_opl_v1",
+                   samples_per_opl_mm=SAMPLES_PER_OPL_MM, reference_sample=REFERENCE_SAMPLE,
+                   experimental_group="", treatment="", timepoint="", experimental_notes="")
+        row["duplicate_exam_count"] = counts[r.key]
+        row.update({f"ri_{k}": v for k, v in INDICES.items()})
+        row.update(values)
+        row["unavailable_measurements"] = ";".join(k for k, v in values.items() if v is None)
+        rows.append(row)
+    _write_dicts(rows, path)
+
+
+def _write_dicts(rows, path):
+    columns = list(dict.fromkeys(k for row in rows for k in row))
+    with open(path, "w", newline="", encoding="utf-8-sig") as fh:
+        writer = csv.DictWriter(fh, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_device_csv(records, path):
+    """Long table retaining all device results and their acceptance/QC metadata.
+
+    Numeric dimension element IDs deliberately remain unmapped. Do not mistake
+    a rejected human-algorithm dimension for validated chick biometry.
+    """
+    rows = []
+    for r in records:
+        base = dict(subject=r.subject_key, eye=r.eye, exam_timestamp=r.exam_ts,
+                    source_file=r.source.replace(chr(92), "/").split("/")[-1])
+        for i, result in enumerate(r.device_results):
+            for dim in result.get("dimensions", []):
+                rows.append(dict(base, result_type="biometry_dimension", result_index=i,
+                                 result_used=result.get("used"), result_quality=result.get("quality"), **dim))
+    _write_dicts(rows, path)
 
 
 def _fmt(v):

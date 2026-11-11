@@ -19,7 +19,7 @@ from matplotlib.figure import Figure
 
 from . import __version__
 from .detect import MARKER_NAMES, Profile, list_profiles, load_profile
-from .export import write_exe_csv, write_tidy_csv
+from .export import write_exe_csv, write_tidy_csv, write_biometry_csv, write_device_csv
 from .render import VIEWS, Y_MODES, draw_eye, save_png
 from .session import EyeRecord, apply_review, process_file, save_review
 
@@ -75,6 +75,8 @@ class App(tk.Tk):
         f.add_separator()
         f.add_command(label="Save review", command=self.save, accelerator="Ctrl+S")
         f.add_command(label="Export table (CSV)...", command=lambda: self.export("tidy"))
+        f.add_command(label="Export biometry (mm, CSV)...", command=lambda: self.export("biometry"))
+        f.add_command(label="Export device results (CSV)...", command=lambda: self.export("device"))
         f.add_command(label="Export SpikeFinder-format CSV...", command=lambda: self.export("exe"))
         f.add_command(label="Export PNGs...", command=self.export_png)
         f.add_separator()
@@ -462,11 +464,12 @@ class App(tk.Tk):
             return
         self._store_notes()
         p = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")],
-                                         initialfile="spikefinder_markers.csv" if kind == "tidy" else "spike_finder_export.csv")
+                                         initialfile={"tidy": "spikefinder_markers.csv", "exe": "spike_finder_export.csv",
+                                                      "biometry": "biometry.csv", "device": "device_results.csv"}[kind])
         if not p:
             return
-        if kind == "tidy":
-            write_tidy_csv(self.records, p)
+        if kind in ("tidy", "biometry", "device"):
+            {"tidy": write_tidy_csv, "biometry": write_biometry_csv, "device": write_device_csv}[kind](self.records, p)
             self.set_status(f"Wrote {p}")
         else:
             n = write_exe_csv(self.records, p)

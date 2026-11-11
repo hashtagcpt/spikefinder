@@ -78,7 +78,7 @@ def load_profile(name: str | None = None) -> Profile:
         txt = resources.files("spikefinder.profiles").joinpath(f"{name}.json").read_text(encoding="utf-8")
         return Profile.from_json(json.loads(txt))
     except (FileNotFoundError, ModuleNotFoundError):
-        return Profile()
+        raise ValueError(f"Unknown detector profile: {name}") from None
 
 
 # ------------------------------------------------------------------ anchor finding

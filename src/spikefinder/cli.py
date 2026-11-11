@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import json
 
 from . import __version__
 
@@ -24,7 +25,7 @@ def collect_files(paths: list[str]) -> list[str]:
             files.append(p)
         else:
             print(f"warning: not found: {p}", file=sys.stderr)
-    return files
+    return list(dict.fromkeys(os.path.normcase(os.path.abspath(f)) for f in files))
 
 
 def default_outdir() -> str:
@@ -33,7 +34,7 @@ def default_outdir() -> str:
 
 def cmd_run(a) -> int:
     from .detect import load_profile
-    from .export import write_exe_csv, write_tidy_csv
+    from .export import write_exe_csv, write_tidy_csv, write_biometry_csv, write_device_csv
     from .render import save_png
     from .session import apply_review, process_file, save_review
 
@@ -47,21 +48,29 @@ def cmd_run(a) -> int:
     if a.show_identifiers:
         print("NOTE: --show-identifiers writes names to the screen only; files always use animal ids or hashes.")
     records = []
+    failures = []
     for i, f in enumerate(files, 1):
         print(f"[{i}/{len(files)}] {os.path.basename(f)}", flush=True)
         try:
             recs = process_file(f, prof, a.show_identifiers)
         except Exception as e:                       # noqa: BLE001 - keep going on a bad file
             print(f"   skipped: {e}", file=sys.stderr)
+            failures.append({"file": os.path.basename(f), "error_type": type(e).__name__})
             continue
+        if not recs:
+            failures.append({"file": os.path.basename(f), "error_type": "NoUsableScans"})
         if not a.fresh:
             apply_review(recs, out)                  # keep earlier human edits
         records += recs
+    with open(os.path.join(out, "batch_report.json"), "w", encoding="utf-8") as fh:
+        json.dump(dict(input_files=len(files), eyes=len(records), failures=failures), fh, indent=2)
     if not records:
         return 1
     save_review(records, out)
     tidy = os.path.join(out, "markers.csv")
     write_tidy_csv(records, tidy)
+    write_biometry_csv(records, os.path.join(out, "biometry.csv"))
+    write_device_csv(records, os.path.join(out, "device_results.csv"))
     print(f"wrote {tidy}")
     if a.exe_csv:
         p = os.path.join(out, "spike_finder_export.csv")
@@ -75,8 +84,9 @@ def cmd_run(a) -> int:
     nrev = sum(r.needs_review for r in records)
     nhum = sum(r.hint != "animal_likely" for r in records)
     print(f"{len(records)} eyes marked; {nrev} flagged for human review; {nhum} not recognised as animal (NOT validated).")
+    print(f"Biometry estimates: {sum(r.status != 'confirmed' for r in records)} eyes still require confirmation.")
     print("Automatic marks are suggestions: open `spikefinder gui` on the same files to check them.")
-    return 0
+    return 1 if failures else 0
 
 
 def cmd_gui(a) -> int:

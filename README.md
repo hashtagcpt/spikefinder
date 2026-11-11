@@ -89,12 +89,21 @@ spikefinder run path/to/folder --out results --png --exe-csv
 | File | Contents |
 |---|---|
 | `markers.csv` | one row per eye: id, eye, timestamp, scans, status, flags, then `<marker>_x`, `_y`, `_conf` for each marker |
+| `biometry.csv` | axial length and tissue thickness estimates in mm, review state, and blank experimental-condition fields |
+| `device_results.csv` | individual device biometry dimensions, including acceptance and warning metadata |
+| `batch_report.json` | input/eye counts and failed files; any failure gives a nonzero exit code |
 | `<esx name>.spikefinder.json` | the review file (automatic positions, current positions, status, notes, reviewer) - the GUI reads and updates it |
 | `spike_finder_export.csv` | (with `--exe-csv`) original SpikeFinder "Dump" layout |
 | `png/` | (with `--png`) one picture per eye |
 
-Positions are **sample indices** of the Lenstar A-scan (the same coordinates the original tool used), not millimetres.
+Positions in `markers.csv` are **sample indices** of the Lenstar A-scan (the same coordinates the original tool used).
 `_y` is the mean linear intensity at that sample, as in the original export.
+
+`biometry.csv` uses the historical optical-path calibration and tissue refractive indices.
+These are research estimates requiring confirmation, with absolute chicken accuracy still unvalidated.
+See [biometry definitions and batch workflow](docs/BIOMETRY.md) and the [audit results](docs/AUDIT_2026-11-11.md).
+Review the landmarks in the GUI, then use File > Export biometry for updated measurements.
+Keep experimental annotations separately: rerunning exports replaces their blank columns.
 
 ### Review window keys
 
@@ -193,9 +202,10 @@ Please read these before relying on the output.
 5. **Only peak-type markers are reasonably reliable**: cornea, lens front, lens back, RPE, choroid, sclera (and even those
    are off by more than 25 samples in roughly 1 eye in 4, mostly the choroid/sclera when the posterior wall has fewer than two
    clear peaks). Retina is convention-dependent. The review flags miss most of these errors (see *How accurate is it?*).
-6. **Units.** Positions are A-scan sample indices. No conversion to millimetres/optical path or axial length is done here.
-7. **Only the phakic 13-marker layout.** The original tool's pseudophakic layout and the Lenstar keratometry/images are not
-   implemented. Only `BIOMETRY` A-scans and the device cursors are read.
+6. **Units.** Marker positions are sample indices. Biometry exports add mm estimates under explicit historical calibration
+   and index assumptions; independent physical validation in chickens remains necessary.
+7. **Only the phakic 13-marker layout.** The original tool's pseudophakic layout and image-based keratometry fitting are not
+   implemented. Keratometry is outside the current scope.
 8. **File compatibility.** Tested on EyeSuite `.esx` exports from 2016-2025 (A-scans of 59,375 samples, one instrument). Other firmware, other scan lengths or other instruments may fail to parse or fall outside the search windows
    (then you get `ANCHOR_FAIL`/`OUT_OF_RANGE_FOR_CHICK`). Truncated files are read as far as they are complete.
 9. **Averaging only.** Only A-scans flagged *used* are averaged (as the original did); no outlier rejection or re-alignment.

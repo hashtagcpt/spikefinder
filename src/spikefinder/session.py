@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import hashlib
 import os
 from dataclasses import dataclass, field
 
@@ -36,6 +37,7 @@ class EyeRecord:
     notes: str = ""
     reviewer: str = ""
     reviewed_at: str = ""
+    device_results: list[dict] = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -88,6 +90,7 @@ def process_file(path: str, profile: Profile | None = None, show_identifiers: bo
             avg = es.average
             det = detect(avg, es.n, hint, profile, es.device_cursors)
             rec = EyeRecord(path, exam.timestamp, safe, label, hint, eye, es.n, avg, es.device_cursors, det, det.x.copy())
+            rec.device_results = es.device_results
             out.append(rec)
             if on_record:
                 on_record(rec)
@@ -97,7 +100,8 @@ def process_file(path: str, profile: Profile | None = None, show_identifiers: bo
 # ------------------------------------------------------------------ review persistence
 def review_path(outdir: str, source: str) -> str:
     stem = os.path.splitext(os.path.basename(source))[0]
-    return os.path.join(outdir, f"{stem}.spikefinder.json")
+    token = hashlib.sha256(os.path.normcase(os.path.abspath(source)).encode()).hexdigest()[:12]
+    return os.path.join(outdir, f"{stem}.{token}.spikefinder.json")
 
 
 def _nan_to_none(a):
@@ -139,13 +143,23 @@ def apply_review(records: list[EyeRecord], outdir: str) -> int:
         p = review_path(outdir, r.source)
         if p not in cache:
             try:
+                if not os.path.exists(p):
+                    legacy = os.path.join(outdir, os.path.splitext(os.path.basename(r.source))[0] + ".spikefinder.json")
+                    p = legacy
                 with open(p, encoding="utf-8") as fh:
-                    cache[p] = {e["key"]: e for e in json.load(fh).get("eyes", [])}
+                    doc = json.load(fh)
+                    cache[review_path(outdir, r.source)] = {e["key"]: e for e in doc.get("eyes", [])}
             except (OSError, ValueError):
-                cache[p] = {}
-        e = cache[p].get(r.key)
+                cache[review_path(outdir, r.source)] = {}
+        e = cache[review_path(outdir, r.source)].get(r.key)
         if e and e.get("status") in ("edited", "confirmed") and len(e.get("x", [])) == 13:
-            r.x = np.array([np.nan if v is None else float(v) for v in e["x"]])
+            try:
+                positions = np.array([np.nan if v is None else float(v) for v in e["x"]])
+            except (ValueError, TypeError):
+                continue
+            if any(not np.isnan(v) and (not np.isfinite(v) or v < 0 or v >= len(r.avg) or v != int(v)) for v in positions):
+                continue
+            r.x = positions
             r.status, r.notes = e["status"], e.get("notes", "")
             r.reviewer, r.reviewed_at = e.get("reviewer", ""), e.get("reviewed_at", "")
             n += 1

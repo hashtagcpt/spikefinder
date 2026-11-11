@@ -57,7 +57,7 @@ mean = np.mean(np.vstack(used_scans), axis=0)
 ## Device results (`BIOMETRYRESULT`)
 
 * `DIMENSION/DIMVALUE` values look like metres (e.g. `0.00534178`), `USED` says whether the instrument accepted it, and
-  `WARNINGIDS` holds codes such as `IDM_OUT_OF_RANGE`. This tool does not interpret the element numbers.
+  `WARNINGIDS` holds codes such as `IDM_OUT_OF_RANGE`. All dimensions are retained in `device_results.csv`; element numbers remain uninterpreted.
 * `CURSOR/SCANPOS` are positions in the same index space as the A-scans. In chick eyes measured on an LS 900, comparison with
   human marks suggests (inferred, not documented): element 1 = cornea, 4 = lens front, 5 = lens back, 6 = retina, 7 = RPE,
   and 0 = the reference position (1000). They are sometimes far from where a person would mark, so treat them as a weak
@@ -74,8 +74,9 @@ date. SpikeFinder reads only `NAME`, `FIRSTNAME` and `BIRTHDAY` to guess "animal
 ## What SpikeFinder reads
 
 `PATIENT/{NAME,FIRSTNAME,BIRTHDAY}`, `EXAMINATION@timestamp`, `MEASUREMENT@eye`, `ASCAN/{USED,SCANLENGTH,SCANDATA}`, and
-`BIOMETRYRESULT/CURSOR`. Everything else (images, keratometry, settings, checksum) is skipped. Truncated files are read up to the
-last complete examination; files that are not XML raise `spikefinder.esx.EsxError`.
+`BIOMETRYRESULT` dimensions/cursors. Keratometry results and settings are skipped.
+Images and checksum validation are skipped. Truncated files are rejected rather than silently returning partial data.
+Files that are not XML raise `spikefinder.esx.EsxError`. See [biometry](BIOMETRY.md) for units and interpretation.
 
 ## SpikeFinder landmark table (original "Dump" CSV)
 

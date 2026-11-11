@@ -54,8 +54,9 @@ def decode_scandata(b64_or_bytes, n_samples: int | None = None) -> np.ndarray:
     raw = base64.b64decode(b64_or_bytes) if isinstance(b64_or_bytes, str) else b64_or_bytes
     arr = np.frombuffer(zlib.decompress(raw), dtype=">f4").astype(np.float64)
     if n_samples is not None and len(arr) != n_samples:
-        # C# reads exactly scan_length floats; keep the same contract but don't crash on mismatch.
-        arr = arr[:n_samples] if len(arr) > n_samples else np.pad(arr, (0, n_samples - len(arr)))
+        raise EsxError(f"scan length mismatch: declared {n_samples}, decoded {len(arr)}")
+    if not np.isfinite(arr).all():
+        raise EsxError("non-finite scan intensities")
     return arr
 
 
@@ -75,6 +76,7 @@ class EyeScans:
     used_flags: list[bool] = field(default_factory=list)
     meas_mode: int | None = None
     lenstar_result: dict | None = None   # device's own BIOMETRYRESULT (dimensions, cursors)
+    device_results: list[dict] = field(default_factory=list)
     _sum: np.ndarray | None = None
     _n: int = 0
 
@@ -82,7 +84,7 @@ class EyeScans:
         if self._sum is None:
             self._sum = np.zeros(len(arr), dtype=np.float64)
         if len(arr) != len(self._sum):          # C# threw on mismatched lengths; we skip the odd scan instead
-            return
+            raise EsxError("inconsistent scan lengths within an eye")
         self._sum += arr
         self._n += 1
         if keep:
@@ -160,7 +162,9 @@ def load_esx(path: str, only_used: bool = True, keep_ascans: bool = False, progr
             for ev, el in ET.iterparse(fh, events=("start", "end")):
                 if ev == "start":
                     stack.append(el.tag)
-                    if el.tag == "EXAMINATION":
+                    if el.tag == "PATIENT":
+                        name = first = bday = ""
+                    elif el.tag == "EXAMINATION":
                         exam = Exam(name, first, bday, el.get("timestamp", ""), source=path)
                     elif el.tag == "MEASUREMENT" and exam is not None:
                         eye = el.get("eye", "?")
@@ -191,8 +195,12 @@ def load_esx(path: str, only_used: bool = True, keep_ascans: bool = False, progr
                         progress(min(fh.tell() / size, 1.0))
                 elif tag == "BIOMETRYRESULT" and es is not None:
                     es.lenstar_result = parse_biometry_result(el)
+                    es.device_results.append(es.lenstar_result)
                     el.clear()
-                elif tag in ("KERIMAGE", "FULLIMAGE", "KERATOMRESULT") and parent == "MEASUREMENT":
+                elif tag in ("KERIMAGE", "FULLIMAGE", "KERATOMRESULT", "KERATOMETRYSETTING") and parent == "MEASUREMENT":
+                    el.clear()
+                elif tag == "MEASUREMENT":
+                    es = None
                     el.clear()
                 elif tag == "EXAMINATION" and exam is not None:
                     exam.eyes = {k: v for k, v in exam.eyes.items() if v.n > 0}
@@ -204,6 +212,7 @@ def load_esx(path: str, only_used: bool = True, keep_ascans: bool = False, progr
         if not exams:
             raise EsxError(f"{os.path.basename(path)}: not a readable .esx file ({e})") from e
         # truncated file: keep the complete exams read so far
+        raise EsxError(f"{os.path.basename(path)}: truncated XML; refusing partial batch results") from e
     if progress:
         progress(1.0)
     return exams
